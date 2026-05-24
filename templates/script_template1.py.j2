@@ -1,4 +1,7 @@
-# 修正v17登录访问频次过高可能导致的图形码奔溃
+#两号end_time2出现bug的问题（改为time-1h)
+# 额外位置的增加
+#refresh出现bug的补丁
+#预约完成打印北京时间
 import base64
 from io import BytesIO
 from PIL import Image
@@ -18,6 +21,7 @@ from datetime import datetime, timedelta, timezone
 
 # ================= 依赖 =================
 import numpy as np
+
 # ========================================
 '''your_account1,your_password1,start_time1,end_time1,
 your_account2,your_password2,start_time2,end_time2,your_preferroom,your_prefersit,'''
@@ -34,9 +38,11 @@ import paddle
 import paddle.nn.functional as F
 import yaml as _yaml
 
+
 def _load_config(cfg_path):
     with open(cfg_path, 'r', encoding='utf-8') as f:
         return _yaml.safe_load(f)
+
 
 def _build_rec_model_native(model_dir):
     """
@@ -45,16 +51,16 @@ def _build_rec_model_native(model_dir):
     """
     import paddle.inference as paddle_infer
     abs_model_dir = os.path.abspath(model_dir)
-    
+
     # 明确指定 model 和 params 文件的绝对路径
     model_file = os.path.join(abs_model_dir, "inference.pdmodel")
     params_file = os.path.join(abs_model_dir, "inference.pdiparams")
-    
+
     # 初始化推理配置
     config = paddle_infer.Config(model_file, params_file)
-    config.disable_gpu()        # GitHub Actions 只有 CPU
-    config.enable_mkldnn()      # 开启 CPU 硬件加速
-    config.switch_ir_optim()    # 开启计算图优化
+    config.disable_gpu()  # GitHub Actions 只有 CPU
+    config.enable_mkldnn()  # 开启 CPU 硬件加速
+    config.switch_ir_optim()  # 开启计算图优化
     config.disable_glog_info()
     # 创建终极预测器
     predictor = paddle_infer.create_predictor(config)
@@ -63,10 +69,11 @@ def _build_rec_model_native(model_dir):
     dict_path = os.path.join(abs_model_dir, "ppocr_keys_v1.txt")
     with open(dict_path, 'r', encoding='utf-8') as f:
         char_list = [line.strip() for line in f if line.strip()]
-    
+
     # CTCLabelDecode 字符表：blank + 字符 + space
     char_dict = ['blank'] + char_list + [' ']
     return predictor, char_dict
+
 
 def _preprocess_crop(pil_img, target_h=48, target_w=320):
     """和训练时一致：保持宽高比缩放 + 右侧补0"""
@@ -82,8 +89,10 @@ def _preprocess_crop(pil_img, target_h=48, target_w=320):
     canvas[:, :, :new_w] = arr
     return paddle.to_tensor(canvas[np.newaxis, :])
 
+
 print("正在初始化环境...")
 import os
+
 abs_model_dir = os.path.abspath(_MODEL_DIR)
 print(f"🔍 [侦探模式] 当前寻找的绝对路径: {abs_model_dir}")
 print(f"🔍 [侦探模式] 该目录是否存在? {os.path.exists(abs_model_dir)}")
@@ -105,6 +114,8 @@ try:
 except Exception as e:
     print(f"✗ 自定义模型加载失败: {e}。将降级全部使用 ddddocr。")
     CUSTOM_MODEL_LOADED = False
+
+
 # ============================================================================
 # ====================================================================
 
@@ -227,6 +238,7 @@ def idtf_imf(account, password, options):
 
     raise Exception(f"达到最大重试次数 ({max_retries})，无法登录")
 
+
 def solve_click_captcha(driver):
     hint_img_elem = driver.find_element(By.CSS_SELECTOR, "img.captcha-text")
     bg_img_elem = driver.find_element(By.CSS_SELECTOR, ".captcha-modal-content img")
@@ -259,26 +271,26 @@ def solve_click_captcha(driver):
             cropped = bg_image.crop((max(0, x1 - 4), max(0, y1 - 4), x2 + 4, y2 + 4))
             tensor = _preprocess_crop(cropped)
             input_data = tensor.numpy()  # Inference 引擎需要 numpy 格式
-            
+
             # 喂入数据
             input_names = _rec_model.get_input_names()
             input_handle = _rec_model.get_input_handle(input_names[0])
             input_handle.copy_from_cpu(input_data)
-            
+
             # 执行推理
             _rec_model.run()
-            
+
             # 获取结果
             output_names = _rec_model.get_output_names()
             output_handle = _rec_model.get_output_handle(output_names[0])
             preds_ndarray = output_handle.copy_to_cpu()
-            
+
             # 计算 softmax 概率
             # preds_ndarray 可能是 [B,T,C] 或 [T,C]，统一压成 [T,C] 再 softmax
             if preds_ndarray.ndim == 3:
-                logits = preds_ndarray[0]          # [T, C]
+                logits = preds_ndarray[0]  # [T, C]
             else:
-                logits = preds_ndarray             # [T, C]
+                logits = preds_ndarray  # [T, C]
             import scipy.special
             prob_matrix = scipy.special.softmax(logits, axis=1)  # axis=1 对应字符维度C
             crop_features.append({"idx": i, "bbox": bbox, "prob_matrix": prob_matrix})
@@ -387,7 +399,7 @@ def handle_captcha_modal(driver):
                 EC.element_to_be_clickable((By.CSS_SELECTOR, "button.confirm-btn:not([disabled])"))
             )
         except TimeoutException:
-            print(f"第{attempt+1}次：确认按钮未变为可点击，可能系统繁忙，继续重试")
+            print(f"第{attempt + 1}次：确认按钮未变为可点击，可能系统繁忙，继续重试")
             continue
         if attempt == 0:
             wait_until_630()
@@ -412,6 +424,8 @@ def handle_captcha_modal(driver):
 
     print("验证码多次失败")
     return False
+
+
 def date_if(prefer_sit, driver):
     full_day_times = ["08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00",
                       "19:00", "20:00", "21:00"]
@@ -421,10 +435,12 @@ def date_if(prefer_sit, driver):
     )
     # 如果找到了reserve-box，检查是否全天可预约
     times_roll = driver.find_elements(By.CLASS_NAME, "times-roll")
+    end_time_str = "{{end_time1}}"
+    adjusted_end_time = (datetime.strptime(end_time_str, "%H:%M") - timedelta(hours=1)).strftime("%H:%M")
     if times_roll and len(times_roll) > 0:
         time_labels = times_roll[0].find_elements(By.TAG_NAME, "label")
         time_texts = [label.text for label in time_labels]
-        if all(time in full_day_times for time in get_time_range(full_day_times, "{{start_time1}}", "{{end_time1}}")):
+        if all(time in full_day_times for time in get_time_range(full_day_times, "{{start_time1}}", adjusted_end_time)):
             day_type = 3
             return prefer_sit, day_type, driver  # 改进点  # 找到全天可预约的座位，直接返回座位号
         # 检查是否全天可预约
@@ -614,6 +630,7 @@ def choose_it(driver, sit_avilable, idx, reading_room, day_type, max_attempts=50
                                 result_text = message_element.text
                                 if "预约成功" in result_text:
                                     print(f"{reading_room}{sit_avilable}号座位时间段{start_time}-{end_time}预约成功")
+                                    print(get_beijing_time().strftime("%Y-%m-%d %H:%M:%S"))
                                     # 预约成功时再次截图
                                     timestamp = time.strftime("%Y%m%d_%H%M%S")
                                     screenshot_path = f"screenshots/screenshot_success_{timestamp}.png"
@@ -673,7 +690,7 @@ def choose_it(driver, sit_avilable, idx, reading_room, day_type, max_attempts=50
                                 page_source = driver.page_source
                                 if "预约成功" in page_source:
                                     print(f"{reading_room}{sit_avilable}号座位时间段{start_time}-{end_time}预约成功")
-
+                                    print(get_beijing_time().strftime("%Y-%m-%d %H:%M:%S"))
                                     timestamp = time.strftime("%Y%m%d_%H%M%S")
                                     screenshot_path = f"screenshots/screenshot_success_{timestamp}.png"
                                     os.makedirs("screenshots", exist_ok=True)
@@ -724,7 +741,11 @@ def choose_it(driver, sit_avilable, idx, reading_room, day_type, max_attempts=50
                 print("发生错误，刷新页面重试...")
                 try:
                     driver.refresh()
-                    time.sleep(3)  # 等待页面刷新完成
+                    WebDriverWait(driver, 10).until(
+                        EC.presence_of_element_located(
+                            (By.CSS_SELECTOR, ".el-select__caret.el-input__icon.el-icon-arrow-up"))
+                    )
+                    choose_sit(driver, reading_room)
                 except:
                     print("刷新页面失败")
                     break
@@ -797,12 +818,19 @@ def date_whether(seat_dict, driver):
     random.seed(int("{{your_account1}}"))
     shuffled_keys = list(seat_dict.keys())
     random.shuffle(shuffled_keys)
+    prefer_sits = ["126", "118", "108","105","110","119"]
+    # 把偏好座位插到列表最前面（过滤掉不在seat_dict里的）
+    priority = [s for s in prefer_sits if s in seat_dict]
+    others = [s for s in shuffled_keys if s not in prefer_sits]
+    shuffled_keys = priority + others
     # 定义需要检查的时间段
     full_day_times = ["08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00",
                       "19:00", "20:00", "21:00"]
     half_day_times = ["14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00", "21:00"]
     # print(seat_dict)
     # 首先寻找全天可预约的座位
+    end_time_str = "{{end_time1}}"
+    adjusted_end_time = (datetime.strptime(end_time_str, "%H:%M") - timedelta(hours=1)).strftime("%H:%M")
     for i in shuffled_keys:
         try:
             selected_div = seat_dict[i]  # 根据座位名称找到对应的 div
@@ -820,7 +848,7 @@ def date_whether(seat_dict, driver):
                     time_texts = [label.text for label in time_labels]
 
                     if all(time in time_texts for time in
-                           get_time_range(full_day_times, "{{start_time1}}", "{{end_time1}}")):
+                           get_time_range(full_day_times, "{{start_time1}}", adjusted_end_time)):
                         print(f"找到全天可预约座位: {i}")
                         found_full_day = True
                         day_type = 3
@@ -967,6 +995,8 @@ def prefer_whether(account, password, prefer_sit, reading_room, options):
     driver.execute_script("arguments[0].click();", element)
     # 检查是否全天可预约
     found_full_day = False
+    end_time_str = "{{end_time1}}"
+    adjusted_end_time = (datetime.strptime(end_time_str, "%H:%M") - timedelta(hours=1)).strftime("%H:%M")
     try:
         # 使用更精确的XPath，包含data-v属性
         selected_div = WebDriverWait(driver, 10).until(
@@ -986,7 +1016,7 @@ def prefer_whether(account, password, prefer_sit, reading_room, options):
                 time_labels = times_roll[0].find_elements(By.TAG_NAME, "label")
                 time_texts = [label.text for label in time_labels]
                 if all(time in time_texts for time in
-                       get_time_range(full_day_times, "{{start_time1}}", "{{end_time1}}")):
+                       get_time_range(full_day_times, "{{start_time1}}", adjusted_end_time)):
                     print(f"偏好座位{prefer_sit}全天可约")
                     found_full_day = True
                     # driver.quit()。
