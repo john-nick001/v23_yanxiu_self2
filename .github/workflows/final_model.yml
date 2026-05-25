@@ -64,7 +64,7 @@ jobs:
           server_port: 465
           secure: true
           username: ${{ secrets.EMAIL_USERNAME }}
-          password: ${{ secrets.EMAIL_PASSWORDA }}
+          password: ${{ secrets.EMAIL_PASSWORD }}
           subject: "座位自动预约日志 - $(date +'%Y-%m-%d') - ${{ matrix.script }}"
           to: ${{ secrets.EMAIL_TO }}
           from: ${{ secrets.EMAIL_USERNAME }}
