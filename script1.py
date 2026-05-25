@@ -815,7 +815,7 @@ def date_whether(seat_dict, driver):
     found_full_day = False
     found_half_day = False
     # print(seat_dict)
-    random.seed(int("4032430180"))
+    random.seed(int("xxxxxxxx"))
     shuffled_keys = list(seat_dict.keys())
     random.shuffle(shuffled_keys)
     prefer_sits = ["126", "118", "108","105","110","119"]
@@ -1138,7 +1138,7 @@ def random_choose(driver):
         pass  # 没有弹出，忽略'''
     driver.refresh()
     time.sleep(1)
-    reading_room = "三楼智慧研修空间"
+    reading_room = "四楼南自习室"
     print(f"偏好位置全天无位置可约，现在进入自习室{reading_room}随机寻找座位......")
     # driver = idtf_imf(account, password, options)
     seat_dict, driver = choose_sit(driver, reading_room)
@@ -1203,11 +1203,11 @@ import shutil
 def main():
     """主函数：循环登录多个账号并执行操作"""
     account_password4 = {
-        "4032430180": "221holmes",
-        "4032430180": "221holmes"
+        "xxxxxxxx": "xxxxxxx",
+        "xxxxxxxx": "xxxxxxx"
     }
     sit_avilable, day_type = None, None
-    users = {"自定义": [account_password4, "三楼智慧研修空间", "2"]}
+    users = {"自定义": [account_password4, "四楼南自习室", "45"]}
     user = "自定义"
     total_accounts = list(users[user][0].items())
     reading_room = users[user][1]
