@@ -799,7 +799,7 @@ def date_whether(seat_dict, driver):
     random.seed(int("4032430183"))
     shuffled_keys = list(seat_dict.keys())
     random.shuffle(shuffled_keys)
-    prefer_sits = ["126", "118", "108","105","110","119"]
+    prefer_sits = ["1", "34", "10","5","2","35"]
     # 把偏好座位插到列表最前面（过滤掉不在seat_dict里的）
     priority = [s for s in prefer_sits if s in seat_dict]
     others = [s for s in shuffled_keys if s not in prefer_sits]
