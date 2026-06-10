@@ -435,12 +435,12 @@ def date_if(prefer_sit, driver):
     )
     # 如果找到了reserve-box，检查是否全天可预约
     times_roll = driver.find_elements(By.CLASS_NAME, "times-roll")
-    end_time_str = "17:00"
+    end_time_str = "21:00"
     adjusted_end_time = (datetime.strptime(end_time_str, "%H:%M") - timedelta(hours=1)).strftime("%H:%M")
     if times_roll and len(times_roll) > 0:
         time_labels = times_roll[0].find_elements(By.TAG_NAME, "label")
         time_texts = [label.text for label in time_labels]
-        if all(time in full_day_times for time in get_time_range(full_day_times, "11:00", adjusted_end_time)):
+        if all(time in full_day_times for time in get_time_range(full_day_times, "15:00", adjusted_end_time)):
             day_type = 3
             return prefer_sit, day_type, driver  # 改进点  # 找到全天可预约的座位，直接返回座位号
         # 检查是否全天可预约
@@ -499,7 +499,7 @@ def choose_it(driver, sit_avilable, idx, reading_room, day_type, max_attempts=50
     返回:
     bool: 预约是否成功
     """
-    dir_time = {3: [['11:00', '17:00'], ['11:00', '17:00']],
+    dir_time = {3: [['15:00', '21:00'], ['15:00', '21:00']],
                 2: [['14:00', '18:00'], ['18:00', '22:00']]}
     start_time = dir_time[day_type][idx][0]
     end_time = dir_time[day_type][idx][1]
@@ -829,7 +829,7 @@ def date_whether(seat_dict, driver):
     half_day_times = ["14:00", "15:00", "16:00", "17:00", "18:00", "19:00", "20:00", "21:00"]
     # print(seat_dict)
     # 首先寻找全天可预约的座位
-    end_time_str = "17:00"
+    end_time_str = "21:00"
     adjusted_end_time = (datetime.strptime(end_time_str, "%H:%M") - timedelta(hours=1)).strftime("%H:%M")
     for i in shuffled_keys:
         try:
@@ -848,7 +848,7 @@ def date_whether(seat_dict, driver):
                     time_texts = [label.text for label in time_labels]
 
                     if all(time in time_texts for time in
-                           get_time_range(full_day_times, "11:00", adjusted_end_time)):
+                           get_time_range(full_day_times, "15:00", adjusted_end_time)):
                         print(f"找到全天可预约座位: {i}")
                         found_full_day = True
                         day_type = 3
@@ -995,7 +995,7 @@ def prefer_whether(account, password, prefer_sit, reading_room, options):
     driver.execute_script("arguments[0].click();", element)
     # 检查是否全天可预约
     found_full_day = False
-    end_time_str = "17:00"
+    end_time_str = "21:00"
     adjusted_end_time = (datetime.strptime(end_time_str, "%H:%M") - timedelta(hours=1)).strftime("%H:%M")
     try:
         # 使用更精确的XPath，包含data-v属性
@@ -1016,7 +1016,7 @@ def prefer_whether(account, password, prefer_sit, reading_room, options):
                 time_labels = times_roll[0].find_elements(By.TAG_NAME, "label")
                 time_texts = [label.text for label in time_labels]
                 if all(time in time_texts for time in
-                       get_time_range(full_day_times, "11:00", adjusted_end_time)):
+                       get_time_range(full_day_times, "15:00", adjusted_end_time)):
                     print(f"偏好座位{prefer_sit}全天可约")
                     found_full_day = True
                     # driver.quit()。
